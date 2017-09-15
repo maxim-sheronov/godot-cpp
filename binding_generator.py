@@ -12,6 +12,8 @@ def generate_bindings(path):
     classes = json.load(open(path))
     
     icalls = set()
+
+    headers = []
     
     for c in classes:
         # print c['name']
@@ -20,8 +22,10 @@ def generate_bindings(path):
         header = generate_class_header(used_classes, c)
         
         impl = generate_class_implementation(icalls, used_classes, c)
-        
-        header_file = open("include/" + strip_name(c["name"]) + ".hpp", "w+")
+
+        header_name = strip_name(c["name"]) + ".hpp"
+        headers.append(header_name)
+        header_file = open("include/" + header_name, "w+")
         header_file.write(header)
         
         source_file = open("src/" + strip_name(c["name"]) + ".cpp", "w+")
@@ -34,6 +38,25 @@ def generate_bindings(path):
     icall_source_file = open("src/__icalls.cpp", "w+")
     icall_source_file.write(generate_icall_implementation(icalls))
 
+    all_headers_header_name = "_CppBindings"
+    all_headers_header = generate_all_headers_header(all_headers_header_name, headers)
+    header_file = open("include/" + all_headers_header_name + ".hpp", "w+")
+    header_file.write(all_headers_header)
+
+def generate_all_headers_header(name, headers):
+    source = []
+    source.append("#ifndef GODOT_CPP_" + name.upper() + "_HPP")
+    source.append("#define GODOT_CPP_" + name.upper() + "_HPP")
+    source.append("")
+    source.append("")
+
+    for header in headers:
+        source.append("#include <" + header + ">")
+
+    source.append("")
+
+    source.append("#endif")
+    return "\n".join(source)
 
 def is_reference_type(t):
     for c in classes:
@@ -81,11 +104,6 @@ def generate_class_header(used_classes, c):
     for used_class in used_classes:
         if is_enum(used_class) and is_nested_type(used_class):
             used_class_name = remove_enum_prefix(extract_nested_type(used_class))
-            if used_class_name not in included:
-                included.append(used_class_name)
-                source.append("#include <" + used_class_name + ".hpp>")
-        elif is_enum(used_class) and is_nested_type(used_class) and not is_nested_type(used_class, class_name):
-            used_class_name = remove_enum_prefix(used_class)
             if used_class_name not in included:
                 included.append(used_class_name)
                 source.append("#include <" + used_class_name + ".hpp>")
